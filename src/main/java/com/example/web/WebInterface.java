@@ -24,14 +24,18 @@ public class WebInterface {
             "<html><head><meta charset=\"utf-8\"><title>Load Balancer Web UI</title></head><body>\n" +
             "<h1>Load Balancer - Web Interface</h1>\n" +
             "<form method=\"post\" action=\"/sendWork\">\n" +
-            "Server IP: <input name=\"serverIp\" value=\"127.0.0.1\"/> <br/>\n" +
-            "Server Port: <input name=\"serverPort\" value=\"5000\"/> <br/>\n" +
-            "Duration (seconds): <input name=\"duration\" value=\"5\"/> <br/>\n" +
+            "Server IP: <input name=\"serverIp\" value=\"java-load-balancer-server\"/> <br/>\n" +
+            "Server Port: <input name=\"serverPort\" value=\"8080\"/> <br/>\n" +
+            "Duration (seconds): <select name=\"duration\">\n" +
+            "  <option value=\"5\" selected>5</option>\n" +
+            "  <option value=\"10\">10</option>\n" +
+            "  <option value=\"15\">15</option>\n" +
+            "</select> <br/>\n" +
             "<button type=\"submit\">Send Work</button>\n" +
             "</form>\n" +
             "<form method=\"post\" action=\"/shutdown\">\n" +
-            "Server IP: <input name=\"serverIp\" value=\"127.0.0.1\"/> <br/>\n" +
-            "Server Port: <input name=\"serverPort\" value=\"5000\"/> <br/>\n" +
+            "Server IP: <input name=\"serverIp\" value=\"java-load-balancer-server\"/> <br/>\n" +
+            "Server Port: <input name=\"serverPort\" value=\"8080\"/> <br/>\n            " +
             "<button type=\"submit\">Shutdown Server</button>\n" +
             "</form>\n" +
             "</body></html>";
@@ -87,9 +91,29 @@ public class WebInterface {
                 return;
             }
             Map<String,String> form = parseForm(exchange.getRequestBody());
-            String serverIp = form.getOrDefault("serverIp", "127.0.0.1");
-            int serverPort = Integer.parseInt(form.getOrDefault("serverPort", "5000"));
-            int duration = Integer.parseInt(form.getOrDefault("duration", "5"));
+            String serverIp = form.getOrDefault("serverIp", "java-load-balancer-server");
+            int serverPort = Integer.parseInt(form.getOrDefault("serverPort", "8080"));
+            int duration;
+            try {
+                duration = Integer.parseInt(form.getOrDefault("duration", "5"));
+            } catch (NumberFormatException nfe) {
+                String msg = "ERROR: Invalid duration value";
+                byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
+                exchange.sendResponseHeaders(400, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
+                return;
+            }
+            // only allow 5, 10, or 15 seconds
+            if (duration != 5 && duration != 10 && duration != 15) {
+                String msg = "ERROR: Duration must be one of 5, 10, or 15 seconds";
+                byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
+                exchange.sendResponseHeaders(400, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
+                return;
+            }
+
             try {
                 InetAddress addr = InetAddress.getByName(serverIp);
                 Instructor instr = new Instructor(addr, serverPort);
@@ -117,8 +141,8 @@ public class WebInterface {
                 return;
             }
             Map<String,String> form = parseForm(exchange.getRequestBody());
-            String serverIp = form.getOrDefault("serverIp", "127.0.0.1");
-            int serverPort = Integer.parseInt(form.getOrDefault("serverPort", "5000"));
+            String serverIp = form.getOrDefault("serverIp", "java-load-balancer-server");
+            int serverPort = Integer.parseInt(form.getOrDefault("serverPort", "8080"));
             try {
                 InetAddress addr = InetAddress.getByName(serverIp);
                 Instructor instr = new Instructor(addr, serverPort);
@@ -138,4 +162,3 @@ public class WebInterface {
         }
     }
 }
-
