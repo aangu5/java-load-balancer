@@ -8,7 +8,7 @@
 # Stage 1: runtime
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-COPY target/java-load-balancer-parent-0.0.1-SNAPSHOT-uber.jar /app/app.jar
+COPY target/java-load-balancer-parent-0.0.1-SNAPSHOT-shaded.jar /app/app.jar
 
 # Default role is client, but user can override with arguments or ROLE env var
 ENV ROLE=client
