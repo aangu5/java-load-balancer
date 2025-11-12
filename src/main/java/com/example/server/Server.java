@@ -2,6 +2,11 @@ package com.example.server;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.Handler;
 
 public class Server {
     private NodeManager nodeManager = new NodeManager();            //instantiates a NodeManager object to store all the Nodes
@@ -9,6 +14,19 @@ public class Server {
     private int serverPort;                                         //port that the server receives messages on
     private InetAddress serverIP;                                   //IP address of the server, set in the constructor using .getLocalHost()
     boolean systemOnline;                                           //boolean flag that represents whether the system is online or not
+
+    // add logger
+    private static final Logger logger = Logger.getLogger(Server.class.getName());
+
+    static {
+        // configure logger for this class (console output with simple formatter)
+        logger.setUseParentHandlers(false);
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setFormatter(new SimpleFormatter());
+        ch.setLevel(Level.FINE);           // output DEBUG (FINE) and above
+        logger.addHandler(ch);
+        logger.setLevel(Level.FINE);       // set logger default to DEBUG
+    }
 
     /**
      * Server constructor sets the port, IP and system online and then runs the system with the runSystem() method
@@ -20,7 +38,7 @@ public class Server {
         try {
             serverIP = InetAddress.getLocalHost();
         } catch (UnknownHostException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Unable to determine local host IP", e);
         }
         runSystem();
     }
@@ -43,12 +61,12 @@ public class Server {
      * initiates a shutdown for the nodes and server if there is no work in progress or backlog
      */
     public void shutdown() {
-        System.out.println("There is work in progress: " + workManager.isWorkInProgress());
+        logger.info("There is work in progress: " + workManager.isWorkInProgress());
         if (workManager.isWorkInProgress() || workManager.isWorkAvailable()){
-            System.out.println("Unable to shutdown due to work in progress!");
+            logger.warning("Unable to shutdown due to work in progress or backlog!");
         } else {
             nodeManager.shutdownNodeConnections();
-            System.out.println("Turning off");
+            logger.info("Turning off");
             System.exit(0);
         }
     }
@@ -64,6 +82,8 @@ public class Server {
         int nodeID = nodeManager.getNextNodeID();
         Node newNode = new Node(this, nodeID, nodeIP, nodePort, inputMaxJobs);
         nodeManager.addNewNode(newNode);
+        logger.fine(String.format("Created node object id=%d ip=%s port=%d maxJobs=%d",
+                nodeID, nodeIP.getHostAddress(), nodePort, inputMaxJobs));
         return newNode;
     }
 
@@ -76,12 +96,13 @@ public class Server {
         int workID = workManager.getNextWorkID();
         Work newWork = new Work(this, workID, duration);
         workManager.addWork(newWork);
+        logger.fine(String.format("New work created id=%d duration=%d", workID, duration));
         Node tempNode = assignWorkCreated();
         if (tempNode != null){
-            System.out.println("Work assigned to " + tempNode.getNodeID());
+            logger.info(String.format("Work %d assigned to node %d", newWork.getWorkID(), tempNode.getNodeID()));
             newWork.setWorkerNode(tempNode);
         } else {
-            System.out.println("Work not assignable. Adding to backlog.");
+            logger.info(String.format("Work %d not assignable. Adding to backlog.", newWork.getWorkID()));
         }
     }
 
@@ -94,13 +115,14 @@ public class Server {
         String messageToSend;
         if (workManager.isWorkAvailable()) {
             if (nodeManager.getMostFreeNode() == null) {
+                logger.fine("Work available but no free node found");
                 return null;
             } else {
                 Node availableNode = nodeManager.getMostFreeNode();
                 Work availableWork = workManager.getAvailableWork();
                 messageToSend = "WORK," + availableWork.getWorkID() + "," + availableWork.getDuration();
                 workManager.startWork(availableWork);
-                System.out.println(messageToSend);
+                logger.info("Sending to node " + availableNode.getNodeID() + ": " + messageToSend);
                 availableWork.setWorkerNode(availableNode);
                 availableNode.sendMessageToNode(messageToSend);
                 availableNode.newJob();
@@ -119,7 +141,12 @@ public class Server {
         workManager.workComplete(completedWork);
         completedWork.setComplete(true);
         Node workerNode = completedWork.getWorkerNode();
-        workerNode.jobComplete();
+        if (workerNode != null) {
+            workerNode.jobComplete();
+            logger.info(String.format("Work %d completed by node %d", workID, workerNode.getNodeID()));
+        } else {
+            logger.warning(String.format("Work %d completed but no worker node recorded", workID));
+        }
     }
 
     /**
@@ -137,29 +164,38 @@ public class Server {
      * Any other message will be printed to the console with a "I don't understand:" statement and the message
      */
     public void runSystem() {
-        System.out.println("Running System....");
+        logger.info("Running System on port: " + serverPort);
         InetAddress tempNodeIP;
         int tempNodePort;
         int tempMaxJobs;
         try (DatagramSocket socket = new DatagramSocket(serverPort)) {
             socket.setSoTimeout(0);
+            logger.info(String.format("Socket opened on %s:%d", InetAddress.getLocalHost().getHostAddress(), serverPort));
+            logger.fine("Entering main receive loop");
 
             while (systemOnline) {
                 Node currentNode;
                 byte[] buffer = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 socket.receive(packet);
+                logger.fine(String.format("Packet received from %s:%d (len=%d)", packet.getAddress(), packet.getPort(), packet.getLength()));
                 String messages = new String(buffer);
                 String[] elements = messages.trim().split(",");
+                if (elements.length == 0 || elements[0].trim().isEmpty()) {
+                    logger.warning("Received empty or malformed message from " + packet.getAddress() + ":" + packet.getPort() + " -> raw='" + messages.trim() + "'");
+                    continue;
+                }
                 String command = elements[0].trim();
-                System.out.println(messages);
+                // log received message with source and parse summary
+                logger.fine(String.format("Parsed command='%s' parts=%d raw='%s'", command, elements.length, messages.trim()));
+                logger.info(String.format("Received '%s' from %s:%d", messages.trim(), packet.getAddress(), packet.getPort()));
                 switch (command) {
                     case "NEWWORK":
                         try {
                             int tempDuration = Integer.parseInt(elements[1]);
                             createNewWork(tempDuration);
                         } catch (NumberFormatException exception) {
-                            exception.printStackTrace();
+                            logger.log(Level.WARNING, "Invalid NEWWORK duration: " + (elements.length > 1 ? elements[1] : "<missing>") + " raw='" + messages.trim() + "'", exception);
                         }
                         break;
                     case "SHUTDOWN":
@@ -172,11 +208,14 @@ public class Server {
                             tempMaxJobs = Integer.parseInt(elements[3].trim());
                             currentNode = createNewNode(tempNodeIP, tempNodePort, tempMaxJobs);
                             currentNode.sendMessageToNode("ACCEPTED");
+                            logger.info(String.format("New node accepted: %s:%d (id=%d, maxJobs=%d)",
+                                    tempNodeIP.getHostAddress(), tempNodePort, currentNode.getNodeID(), tempMaxJobs));
                         } catch (UnknownHostException | NumberFormatException exception) {
-                            exception.printStackTrace();
+                            logger.log(Level.WARNING, "Invalid NEW node parameters raw='" + messages.trim() + "'", exception);
                         }
                         break;
                     case "READY":
+                        logger.fine("READY received — attempting to assign work");
                         assignWorkCreated();
                         break;
                     case "COMPLETE":
@@ -184,7 +223,7 @@ public class Server {
                             int completedWorkID = Integer.parseInt(elements[1].trim());
                             workComplete(completedWorkID);
                         } catch (NumberFormatException exception) {
-                            exception.printStackTrace();
+                            logger.log(Level.WARNING, "Invalid COMPLETE work id: " + (elements.length > 1 ? elements[1] : "<missing>") + " raw='" + messages.trim() + "'", exception);
                         }
                         assignWorkCreated();
                         break;
@@ -195,14 +234,17 @@ public class Server {
                             Node badNode = tempWork.getWorkerNode();
                             tempWork.setComplete(true);
                             workManager.updateWork(tempWork);
-                            System.out.println("Removing bad node from operation");
-                            badNode.sendMessageToNode("SHUTDOWN");
-                            nodeManager.delete(badNode);
+                            logger.warning("Removing bad node from operation: " + (badNode != null ? badNode.getNodeID() : "unknown"));
+                            if (badNode != null) {
+                                badNode.sendMessageToNode("SHUTDOWN");
+                                nodeManager.delete(badNode);
+                                logger.fine("Sent SHUTDOWN to bad node id=" + badNode.getNodeID());
+                            }
                             createNewWork(tempWork.getDuration());
                             tempWork.setWorkerNode(null);
                             workManager.workComplete(tempWork);
                         } catch (NumberFormatException exception) {
-                            exception.printStackTrace();
+                            logger.log(Level.WARNING, "Invalid FAILEDWORK work id: " + (elements.length > 1 ? elements[1] : "<missing>") + " raw='" + messages.trim() + "'", exception);
                         }
                         break;
                     case "ALIVE":
@@ -211,9 +253,14 @@ public class Server {
                             tempNodeIP = InetAddress.getByName(elements[1].trim());
                             tempNodePort = Integer.parseInt(elements[2].trim());
                             currentNode = nodeManager.findByIPAndPort(tempNodeIP, tempNodePort);
-                            currentNode.checkNodeIn();
+                            if (currentNode != null) {
+                                currentNode.checkNodeIn();
+                                logger.fine(String.format("Node check-in: %s:%d (id=%d)", tempNodeIP.getHostAddress(), tempNodePort, currentNode.getNodeID()));
+                            } else {
+                                logger.warning(String.format("Check-in from unknown node %s:%d", tempNodeIP.getHostAddress(), tempNodePort));
+                            }
                         } catch (NumberFormatException | UnknownHostException exception) {
-                            exception.printStackTrace();
+                            logger.log(Level.WARNING, "Invalid ALIVE/WORKING parameters raw='" + messages.trim() + "'", exception);
                         }
                         break;
                     case "DEADNODE":
@@ -221,18 +268,22 @@ public class Server {
                             tempNodeIP = InetAddress.getByName(elements[1].trim());
                             tempNodePort = Integer.parseInt(elements[2].trim());
                             currentNode = nodeManager.findByIPAndPort(tempNodeIP, tempNodePort);
-                            nodeManager.delete(currentNode);
-                            System.out.println("Node deleted due to unresponsiveness!");
+                            if (currentNode != null) {
+                                nodeManager.delete(currentNode);
+                                logger.warning("Node deleted due to unresponsiveness: " + currentNode.getNodeID());
+                            } else {
+                                logger.warning(String.format("DEADNODE for unknown node %s:%d", tempNodeIP.getHostAddress(), tempNodePort));
+                            }
                         } catch (NumberFormatException | UnknownHostException exception) {
-                            exception.printStackTrace();
+                            logger.log(Level.WARNING, "Invalid DEADNODE parameters raw='" + messages.trim() + "'", exception);
                         }
                         break;
                     default:
-                        System.out.println("I don't understand: " + elements[0]);
+                        logger.warning("I don't understand: " + elements[0] + " raw='" + messages.trim() + "'");
                 }
             }
         } catch (IOException exception) {
-            exception.printStackTrace();
+            logger.log(Level.SEVERE, "I/O error in runSystem", exception);
         }
     }
 }
