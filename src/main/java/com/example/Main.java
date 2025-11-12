@@ -34,6 +34,9 @@ public class Main {
                 case "gui":
                     com.example.gui.Interface.main(remaining);
                     break;
+                case "web":
+                    com.example.web.WebInterface.main(remaining);
+                    break;
                 default:
                     System.err.println("Unknown role: " + role);
                     System.exit(2);
@@ -44,4 +47,3 @@ public class Main {
         }
     }
 }
-
