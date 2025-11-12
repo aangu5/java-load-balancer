@@ -7,7 +7,7 @@
 
     <parent>
         <groupId>com.example</groupId>
-        <artifactId>my-app-parent</artifactId>
+        <artifactId>java-load-balancer-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>

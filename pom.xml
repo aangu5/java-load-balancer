@@ -6,10 +6,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>my-app-parent</artifactId>
+    <artifactId>java-load-balancer-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>my-app</name>
+    <name>java-load-balancer</name>
 
     <modules>
         <module>client</module>
