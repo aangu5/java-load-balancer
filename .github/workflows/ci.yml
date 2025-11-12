@@ -28,10 +28,10 @@ jobs:
             ${{ runner.os }}-m2-
 
       - name: Build uber JAR
-        run: mvn -B -Puberjar -DskipTests clean package
+        run: mvn -B -ntp -Puberjar -DskipTests clean package
 
       - name: OWASP Dependency-Check
-        run: mvn org.owasp:dependency-check-maven:check -Dformat=ALL || true
+        run: mvn -ntp org.owasp:dependency-check-maven:check -Dformat=ALL || true
 
       - name: Build Docker image
         uses: docker/build-push-action@v4
