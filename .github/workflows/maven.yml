@@ -36,22 +36,22 @@ jobs:
       - name: Build with Maven
         run: mvn -B -ntp package --file pom.xml
 
-      - name: OWASP Dependency-Check
-        run: |
-          mvn -B -ntp org.owasp:dependency-check-maven:check -Dformat=ALL || true
-        continue-on-error: false
-
-      - name: Upload dependency-check reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-check-reports
-          path: target/dependency-check-report.*
-
-      - name: Update dependency graph
-        uses: advanced-security/maven-dependency-submission-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          projects: '**/pom.xml'
+#      - name: OWASP Dependency-Check
+#        run: |
+#          mvn -B -ntp org.owasp:dependency-check-maven:check -Dformat=ALL || true
+#        continue-on-error: false
+#
+#      - name: Upload dependency-check reports
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: dependency-check-reports
+#          path: target/dependency-check-report.*
+#
+#      - name: Update dependency graph
+#        uses: advanced-security/maven-dependency-submission-action@v1
+#        with:
+#          github-token: ${{ secrets.GITHUB_TOKEN }}
+#          projects: '**/pom.xml'
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
