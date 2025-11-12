@@ -1,9 +1,9 @@
-package com.example;
+package com.example.gui;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class Main {
+public class Interface {
     /**
      * Takes the arguments from the command line and creates and runs and Instructor object to send Work to the Server
      * @param args - the Server IP address and Server Port - throws error for unknown host

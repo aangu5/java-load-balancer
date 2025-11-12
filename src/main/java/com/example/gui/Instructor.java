@@ -1,4 +1,4 @@
-package com.example;
+package com.example.gui;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;

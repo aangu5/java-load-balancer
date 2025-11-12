@@ -6,16 +6,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>java-load-balancer-parent</artifactId>
+    <artifactId>java-load-balancer</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
     <name>java-load-balancer</name>
-
-    <modules>
-        <module>client</module>
-        <module>server</module>
-        <module>gui</module>
-    </modules>
 
     <properties>
         <java.version>17</java.version>
@@ -66,41 +60,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-
-        <!-- Note: finalName will be set in the 'uberjar' profile when producing the shaded jar -->
     </build>
 
-    <!-- Profile to build an uber/fat jar using maven-shade-plugin -->
-    <profiles>
-        <profile>
-            <id>uberjar</id>
-            <build>
-                <finalName>${project.artifactId}-${project.version}-uber</finalName>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-shade-plugin</artifactId>
-                        <version>${maven.shade.plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>shade</goal>
-                                </goals>
-                                <configuration>
-                                    <createDependencyReducedPom>false</createDependencyReducedPom>
-                                    <minimizeJar>false</minimizeJar>
-                                    <transformers>
-                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                            <mainClass>com.example.Main</mainClass>
-                                        </transformer>
-                                    </transformers>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

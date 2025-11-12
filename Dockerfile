@@ -6,9 +6,9 @@
 # RUN mvn -B -Puberjar -DskipTests clean package
 
 # Stage 1: runtime
-FROM eclipse-temurin:17-jre-jammy
+FROM registry.access.redhat.com/ubi8/openjdk-17@sha256:7016a0c5ce878211a8b82fbeb6619f82a97a35acdba6773be1c5f92f4e85aec8
 WORKDIR /app
-COPY target/java-load-balancer-parent-0.0.1-SNAPSHOT-shaded.jar /app/app.jar
+COPY target/java-load-balancer-*.jar /app/app.jar
 
 # Default role is client, but user can override with arguments or ROLE env var
 ENV ROLE=client

@@ -1,4 +1,4 @@
-package com.example;
+package com.example.server;
 
 import java.net.InetAddress;
 import java.util.Comparator;

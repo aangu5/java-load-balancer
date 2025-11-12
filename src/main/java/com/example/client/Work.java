@@ -1,4 +1,4 @@
-package com.example;
+package com.example.client;
 
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
